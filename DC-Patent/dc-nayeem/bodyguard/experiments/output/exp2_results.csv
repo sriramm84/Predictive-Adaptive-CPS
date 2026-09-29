@@ -1,0 +1,4 @@
+mode,first_critical_min,peak_temp_C,tasks_local,tasks_offloaded
+Static Threshold,none,78.6,1485,644
+Threshold+Deriv,none,76.8,1322,807
+Full Bodyguard,none,77.3,1309,820

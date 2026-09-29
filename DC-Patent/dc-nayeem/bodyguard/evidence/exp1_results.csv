@@ -1,0 +1,6 @@
+metric,baseline,bodyguard
+reboots_24h,493,241
+downtime_minutes,493.0,241.0
+uptime_percent,65.8,83.3
+tasks_local,11372,11329
+tasks_offloaded,0,5508

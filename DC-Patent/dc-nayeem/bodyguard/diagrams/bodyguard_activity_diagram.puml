@@ -1,0 +1,118 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 14
+skinparam activityFontSize 13
+skinparam titleFontSize 22
+skinparam activityBackgroundColor #E8F4FD
+skinparam activityBorderColor #2E86AB
+
+title <b>Predictive & Adaptive Hardware Protection System</b>
+
+|#E3F2FD| <b> SENSOR ACQUISITION LAYER </b> |
+start
+:<b>HARDWARE INPUT STREAM</b>
+----
+<b>I2C Bus (INA219):</b>
+- Voltage (V), Current (I)
+
+<b>GPIO Bus (thermal_zone0):</b>
+- Temperature (T)
+
+<b>Telemetry Stream:</b>
+- CPU %, Queue Depth
+
+//(Sampled every 2 sec from edge device)//;
+
+:<b>1. SENSOR FUSION & DATA ACQUISITION</b>
+----
+- PhysicsSimulator captures raw signals
+- Creates <b>SensorReading</b> (T, V, I, CPU%, Q)
+- Stores in <b>SensorHistory</b> (Buffer depth=10)
+- Timestamp alignment & calibration;
+
+:<b>2. DERIVATIVE COMPUTATION</b>
+----
+- <b>dT/dt</b>: Thermal velocity (C/min)
+- <b>dV/dt</b>: Voltage drop rate (V/sec)
+- <b>sigma_V</b>: Voltage instability (Std Dev)
+- Load Pressure: CPU x 0.7 + Q x 0.3;
+
+|#E8F5E9| <b> RISK ASSESSMENT LAYER </b> |
+:<b>3. SIX-TERM RISK SCORE ENGINE</b>
+----
+<b>R = Sum(wi xi), i=1..6</b>
+
+- x1: Thermal Proximity (w=0.15)
+- <b>x2: Thermal Velocity (w=0.25)</b>
+- x3: Voltage Sag (w=0.15)
+- <b>x4: Voltage Drop Rate (w=0.20)</b>
+- x5: Voltage Instability (w=0.10)
+- x6: Load Pressure (w=0.15)
+
+<b>R guaranteed in [0, 1]</b>;
+
+:<b>4. DUAL-HYSTERESIS STATE MACHINE</b>
+----
+SAFE->WARN: R>=0.30 | WARN->SAFE: R<0.25
+WARN->CRIT: R>=0.65 | CRIT->WARN: R<0.55
+CRIT->EMERG: R>=0.85
+
+<b>States: SAFE | WARNING | CRITICAL | EMERGENCY</b>;
+
+|#FFF3E0| <b> TASK ROUTING LAYER </b> |
+:<b>5. DUAL-GATE ADMISSION CONTROLLER</b>
+----
+<b>Input:</b> Task (ID, Weight, Priority)
+
+<b>Gate 1 - STATE:</b>
+SAFE: All local | WARN: Lightweight local
+CRIT: Mission-critical only | EMERG: Throttle
+
+<b>Gate 2 - BUDGET:</b>
+B_t = floor(B_max x (1-R) - C_w)
+B_max=10, Window=30s, Replenish R<0.25;
+
+|#E8F5E9| <b> PROTECTIVE EXECUTION LAYER </b> |
+:<b>ROUTING DECISION</b>;
+
+split
+  :<b>A. LOCAL EXECUTION</b>
+  //(SAFE State)//
+  ----
+  - Standard task processing
+  - Hardware utilization monitored
+  - Budget consumed per task;
+split again
+  :<b>B. CLOUD OFFLOADING</b>
+  //(WARNING/CRITICAL + Net)//
+  ----
+  - Cloud API Handoff (JSON)
+  - Remote execution
+  - No local CPU impact;
+split again
+  :<b>C. EMERGENCY THROTTLING</b>
+  //(EMERGENCY / No Net)//
+  ----
+  - Sleep interleaving (500ms)
+  - Passive cooling interval
+  - Non-critical tasks REJECTED;
+end split
+
+|#F3E5F5| <b> OUTCOME & TELEMETRY LAYER </b> |
+:<b>6. SYSTEM HEALTH OUTCOME</b>
+----
+- Hardware Preservation
+- Reduced Brownouts/Thermal Shutdowns
+- Application Uptime Maintenance
+- Physical Degradation Prevention;
+
+:<b>TELEMETRY LOGGING (CSV)</b>
+----
+- Sensor readings + derivatives
+- Risk terms (x1..x6) + R score
+- State, budget, routing decisions
+
+//(Post-hoc analysis & patent evidence)//;
+stop
+@enduml
